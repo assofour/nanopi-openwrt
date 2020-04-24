@@ -1,11 +1,11 @@
-name: r2s Lean版openwrt minimal 
+name: r2s gaalee customized firmware
 
 on:
   push:
     branches:
       - master
     paths:
-      - '.github/workflows/r2s_gaalee.yml_'
+      - '.github/workflows/r2s_gaalee.yml'
 #  schedule:
 #    - cron: '10 08 * * *'
 
