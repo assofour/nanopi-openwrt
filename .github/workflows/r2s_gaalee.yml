@@ -1,4 +1,4 @@
-name: r2s gaalee customized firmware
+name: r2s gaalee/lean version
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     paths:
       - '.github/workflows/r2s_gaalee.yml'
 #  schedule:
-#    - cron: '10 08 * * *'
+#    - cron: '09 20 * * *'
 
 jobs:
 
@@ -44,12 +44,13 @@ jobs:
           cd friendlywrt-rk3328
           repo init -u https://github.com/friendlyarm/friendlywrt_manifests -b master-v19.07.1 -m rk3328.xml --repo-url=https://github.com/friendlyarm/repo --no-clone-bundle --depth=1
           repo sync -c --no-tags --no-clone-bundle -j8
+          #cd u-boot/ && git fetch --unshallow && cd ../
           cd friendlywrt/ && git fetch --unshallow
 
       - name: Patch Kernel
         run: |
           . patch_kernel_5.4.sh
-    
+
       - name: Mods
         run: |
           cd friendlywrt-rk3328
@@ -153,22 +154,34 @@ jobs:
           mv ../../scripts/autoupdate.sh package/base-files/files/root/au.sh && chmod +x package/base-files/files/root/au.sh
           echo -e '\n Build by Terry with GitHub Action\n' >> package/base-files/files/etc/banner
 
-          
       - name: Add OpenClash
         run: |
-          git clone https://github.com/vernesong/OpenClash.git 
+          git clone https://github.com/vernesong/OpenClash.git
           mv OpenClash/luci-app-openclash friendlywrt-rk3328/friendlywrt/package
           cd friendlywrt-rk3328/friendlywrt/package/base-files/files
-          mkdir -p etc/openclash/core && cd etc/openclash/core
+          mkdir -p etc/openclash && cd etc/openclash
           curl -L https://github.com/vernesong/OpenClash/releases/download/Clash/clash-linux-armv8.tar.gz | tar zxf -
           chmod +x clash
-
 
       - name: Build FriendlyWrt
         run: |
           cd friendlywrt-rk3328
           sed -i 's/set -eu/set -u/' scripts/mk-friendlywrt.sh
           ./build.sh nanopi_r2s.mk
+          
+      - name: Fix FriendlyWrt rootfs owner and group
+        if: steps.changelog.outputs.changelog != ''
+        run: |
+          sudo df -lh
+          lodev=$(sudo losetup -f)
+          echo "found unused loop dev $lodev"
+          sudo losetup -o 100663296 $lodev friendlywrt-rk3328/out/*.img
+          sudo rm -rf /mnt/friendlywrt-tmp
+          sudo mkdir -p /mnt/friendlywrt-tmp
+          sudo mount $lodev /mnt/friendlywrt-tmp
+          sudo chown -R root:root /mnt/friendlywrt-tmp
+          sudo umount /mnt/friendlywrt-tmp
+          sudo losetup -d $lodev
 
       - name: Zip Files
         run: |
@@ -184,6 +197,7 @@ jobs:
           zip -r artifact.zip ./artifact/
           release_tag="R2S-Minimal-$(date +%Y-%m-%d)"
           echo "##[set-output name=release_tag;]$release_tag"
+
       - name: Upload Artifact
         uses: actions/upload-artifact@master
         with:
@@ -197,7 +211,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
         with:
           tag_name: ${{ steps.assemble_artifact.outputs.release_tag }}
-          release_name: Auto build ${{ steps.assemble_artifact.outputs.release_tag }}
+          release_name: Audo Release ${{ steps.assemble_artifact.outputs.release_tag }}
           draft: false
           prerelease: false
       
